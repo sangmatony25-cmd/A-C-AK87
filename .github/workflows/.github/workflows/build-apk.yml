@@ -1,0 +1,76 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'বিল্ড টাইপ নির্বাচন করুন / Select Build Type'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Build ${{ github.event.inputs.build_type || 'Debug' }} APK
+    
+    steps:
+    - name: 📥 কোড চেকআউট করুন / Checkout code
+      uses: actions/checkout@v3
+      
+    - name: ☕ Java সেটআপ করুন / Set up Java
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'adopt'
+        
+    - name: 🤖 Android SDK সেটআপ করুন / Set up Android SDK
+      uses: android-actions/setup-android@v2
+      
+    - name: 🔐 Gradle এর জন্য এক্সিকিউট পারমিশন দিন / Grant execute permission for gradle
+      run: chmod +x gradlew
+      
+    - name: 🔨 Debug APK তৈরি করুন / Build Debug APK
+      if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event.inputs.build_type == 'debug'
+      run: ./gradlew assembleDebug
+      continue-on-error: true
+      
+    - name: 🔓 Release APK তৈরি করুন / Build Release APK
+      if: github.event.inputs.build_type == 'release'
+      run: ./gradlew assembleRelease
+      continue-on-error: true
+      
+    - name: 📤 Debug APK আপলোড করুন / Upload Debug APK
+      if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event.inputs.build_type == 'debug'
+      uses: actions/upload-artifact@v3
+      with:
+        name: debug-apk
+        path: app/build/outputs/apk/debug/
+        if-no-files-found: ignore
+        
+    - name: 📤 Release APK আপলোড করুন / Upload Release APK
+      if: github.event.inputs.build_type == 'release'
+      uses: actions/upload-artifact@v3
+      with:
+        name: release-apk
+        path: app/build/outputs/apk/release/
+        if-no-files-found: ignore
+        
+    - name: 🎉 রিলিজ তৈরি করুন / Create Release
+      if: github.event.inputs.build_type == 'release' && github.event_name == 'workflow_dispatch'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ github.run_number }}
+        name: Release v${{ github.run_number }}
+        body: 'APK automatically built'
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
