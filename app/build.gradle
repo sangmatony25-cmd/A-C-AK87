@@ -15,16 +15,49 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+        release {
+            // এটি সেটআপ করতে আপনার সাইনিং কী কনফিগারেশন দিন
+            storeFile file('release.keystore')
+            storePassword System.getenv('KEYSTORE_PASSWORD') ?: 'password'
+            keyAlias System.getenv('KEY_ALIAS') ?: 'key_alias'
+            keyPassword System.getenv('KEY_PASSWORD') ?: 'password'
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             debuggable false
+            signingConfig signingConfigs.release
         }
         debug {
             minifyEnabled false
             debuggable true
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    flavorDimensions "buildType"
+    
+    productFlavors {
+        manual {
+            dimension "buildType"
+            applicationIdSuffix ".manual"
+            versionNameSuffix "-manual"
+        }
+        auto {
+            dimension "buildType"
+            applicationIdSuffix ".auto"
+            versionNameSuffix "-auto"
         }
     }
 
@@ -44,4 +77,28 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}
+
+// কাস্টম টাস্ক: অটো বিল্ড APK
+task buildAutoApk {
+    dependsOn 'assembleAutoRelease'
+    doLast {
+        println "✓ অটো APK বিল্ড সম্পন্ন হয়েছে"
+    }
+}
+
+// কাস্টম টাস্ক: ম্যানুয়াল বিল্ড APK
+task buildManualApk {
+    dependsOn 'assembleManualRelease'
+    doLast {
+        println "✓ ম্যানুয়াল APK বিল্ড সম্পন্ন হয়েছে"
+    }
+}
+
+// কাস্টম টাস্ক: উভয় APK বিল্ড করুন
+task buildAllApks {
+    dependsOn 'buildAutoApk', 'buildManualApk'
+    doLast {
+        println "✓ সমস্ত APK বিল্ড সম্পন্ন হয়েছে"
+    }
 }
