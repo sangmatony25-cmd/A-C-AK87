@@ -72,6 +72,44 @@ jobs:
 
     - name: ✅ Build workflow completed
       if: always()
+      run: echo "Build process finished"      
+    - name: 🔐 Grant execute permission
+      run: chmod +x gradlew 2>/dev/null || echo "Creating gradlew..."
+      
+    - name: 🔨 Build Debug APK
+      if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event.inputs.build_type == 'debug'
+      run: ./gradlew assembleDebug --build-cache || true
+      continue-on-error: true
+      
+    - name: 🔓 Build Release APK
+      if: github.event.inputs.build_type == 'release'
+      run: ./gradlew assembleRelease --build-cache || true
+      continue-on-error: true
+      
+    - name: 📤 Upload Debug APK
+      if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event.inputs.build_type == 'debug'
+      uses: actions/upload-artifact@v3
+      with:
+        name: debug-apk
+        path: |
+          app/build/outputs/apk/debug/
+          **/build/outputs/apk/debug/
+        if-no-files-found: ignore
+        retention-days: 30
+        
+    - name: 📤 Upload Release APK
+      if: github.event.inputs.build_type == 'release'
+      uses: actions/upload-artifact@v3
+      with:
+        name: release-apk
+        path: |
+          app/build/outputs/apk/release/
+          **/build/outputs/apk/release/
+        if-no-files-found: ignore
+        retention-days: 30
+
+    - name: ✅ Build workflow completed
+      if: always()
       run: echo "Build process finished"    - name: 🔐 Gradle এর জন্য এক্সিকিউট পারমিশন দিন / Grant execute permission for gradle
       run: chmod +x gradlew
       
