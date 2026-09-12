@@ -1,39 +1,92 @@
-name: Pure Android APK Build
+name: Android CI/CD Production Pipeline
 
 on:
   push:
     branches:
       - main
+      - develop
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Select Build Type'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
 
 jobs:
-  build:
+  # জব ১: কোডের কোয়ালিটি ও ইউনিট টেস্ট চেক করা
+  code-quality-and-test:
+    name: Code Quality & Testing
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: 'temurin'
           java-version: '17'
-
-      - name: Setup Gradle Cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+          cache: 'gradle' # বিল্ট-ইন প্রফেশনাল গ্রেডল ক্যাশিং
 
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew
 
-      - name: Build Debug APK
+      - name: Run Static Code Analysis (Lint)
+        run: ./gradlew lintDebug --continue
+
+      - name: Run Unit Tests
+        run: ./gradlew testDebugUnitTest
+
+  # জব ২: এপিকে বিল্ড এবং আর্টফ্যাক্ট আপলোড করা
+  build-and-package:
+    name: Build & Package APK
+    needs: code-quality-and-test # টেস্ট পাস করলেই কেবল বিল্ড শুরু হবে
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+
+      # ম্যানুয়াল ইনপুট অথবা পুশ ইভেন্টের ওপর ভিত্তি করে বিল্ড টাইপ নির্ধারণ
+      - name: Build Android APK
+        env:
+          BUILD_TYPE: ${{ github.event.inputs.build_type || 'debug' }}
+        run: |
+          if [ "$BUILD_TYPE" = "release" ]; then
+            echo "Building Release APK..."
+            ./gradlew assembleRelease --stacktrace
+          else
+            echo "Building Debug APK..."
+            ./gradlew assembleDebug --stacktrace
+          fi
+
+      # বিল্ড হওয়া এপিকে আর্টফ্যাক্ট হিসেবে সেভ করা
+      - name: Upload Generated APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ github.event.inputs.build_type || 'debug' }}-apk
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
+          retention-days: 7 # প্রফেশনাল প্র্যাকটিস: গিটহাব স্টোরেজ বাঁচাতে ৭ দিন পর ফাইল ডিলিট হবে
         run: ./gradlew assembleDebug
 
       - name: Upload Debug APK
