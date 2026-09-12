@@ -19,18 +19,17 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # এখানে 'android' ফোল্ডারের ভেতর ঢুকে পারমিশন ফিক্স করা হচ্ছে
+      # রুট ডিরেক্টরি থেকেই সরাসরি পারমিশন দেওয়া হচ্ছে
       - name: Grant Execute Permission for Gradlew
-        working-directory: ./android
         run: chmod +x gradlew
 
-      # 'android' ফোল্ডারের ভেতর থেকে এপিকে বিল্ড করা হচ্ছে
+      # রুট ডিরেক্টরি থেকেই বিল্ড রান করা হচ্ছে
       - name: Build Debug APK
-        working-directory: ./android
         run: ./gradlew assembleDebug
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: android-debug-apk
-          path: "android/app/build/outputs/apk/debug/*.apk"
+          path: "app/build/outputs/apk/debug/*.apk"
+
