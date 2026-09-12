@@ -1,32 +1,16 @@
-name: Android CI/CD Production Pipeline
+name: Pure Android APK Build
 
 on:
   push:
     branches:
       - main
-      - develop
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
-    inputs:
-      build_type:
-        description: 'Select Build Type'
-        required: true
-        default: 'debug'
-        type: choice
-        options:
-          - debug
-          - release
 
 jobs:
-  # জব ১: কোডের কোয়ালিটি ও ইউনিট টেস্ট চেক করা
-  code-quality-and-test:
-    name: Code Quality & Testing
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Source Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -34,6 +18,18 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-apk
+          path: "**/build/outputs/apk/debug/*.apk"
           cache: 'gradle' # বিল্ট-ইন প্রফেশনাল গ্রেডল ক্যাশিং
 
       - name: Grant Execute Permission for Gradlew
