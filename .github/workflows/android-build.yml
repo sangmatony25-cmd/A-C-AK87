@@ -12,10 +12,15 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Build APK
+      
+      # রান টাইমে অটোমেটিক গ্রেডল ফাইল তৈরি এবং বিল্ড প্রসেস
+      - name: Auto Initialize Gradle and Build
         run: |
-          wget https://github.com -O gradle/wrapper/gradle-wrapper.jar
-          bash gradlew assembleDebug
+          gradle init --type basic --dsl groovy
+          gradle wrapper --gradle-version 8.4
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
       - uses: actions/upload-artifact@v4
         with:
           name: my-apk
